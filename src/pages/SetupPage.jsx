@@ -487,7 +487,7 @@ fetch("https://nominatim.openstreetmap.org/search.php?q=동대문구&polygon_geo
         <button
         style={{
           ...styles.btn,
-          marginTop: 30,
+          marginTop: 15,
           padding: "12px 24px",
           width: "auto",
           fontSize: 22,
