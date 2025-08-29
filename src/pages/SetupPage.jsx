@@ -11,9 +11,10 @@ import { getPersonalizedMessages } from "../services/api.js";
 
 export default function SetupPage() {
   const nav = useNavigate();
-  const { startLocation, setStartLocation, duration, setDuration, canProceed, setAddress, address } = useSelection();
+  const { startLocation, setStartLocation, duration, setDuration, canProceed } = useSelection();
   const { isLoggedIn } = useAuth();
 
+  const [address, setAddress] = useState("");
   const [showMap, setShowMap] = useState(false);
   const [showDurationInput, setShowDurationInput] = useState(false);
   const [showMoodInput, setShowMoodInput] = useState(false);
@@ -245,7 +246,7 @@ fetch("https://nominatim.openstreetmap.org/search.php?q=동대문구&polygon_geo
 
   useEffect(()=>{
     setAddress("");
-  },[]);
+  },[setAddress]);
 
   return (
     <div style={styles.page}>
