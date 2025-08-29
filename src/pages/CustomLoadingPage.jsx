@@ -20,7 +20,7 @@ export default function CustomLoadingPage() {
     const formData = new FormData();
     formData.append("file", location.state.drawingBlob, "drawing.png");
 
-    fetch("//52.23.215.30:5001/api/upload", {
+    fetch("http://52.23.215.30:5001/api/upload", {
       method: "POST",
       body: formData,
     })

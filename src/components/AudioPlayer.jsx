@@ -8,7 +8,7 @@ export default function AudioPlayer({ mood }) {
   useEffect(() => {
     if (mood) {
       // 무드에 따른 음악 파일 URL 생성
-      const musicUrl = `//52.23.215.30:5001/api/music/${encodeURIComponent(mood)}`
+      const musicUrl = `http://52.23.215.30:5001/api/music/${encodeURIComponent(mood)}`
       setAudioSrc(musicUrl)
     }
   }, [mood])

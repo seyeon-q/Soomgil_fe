@@ -1,6 +1,6 @@
 // API 서비스 함수들
 
-const API_BASE_URL = '//52.23.215.30:5001/api';
+const API_BASE_URL = 'http://52.23.215.30:5001/api';
 
 // API 호출 헬퍼 함수
 async function apiCall(endpoint, options = {}) {
