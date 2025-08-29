@@ -243,6 +243,10 @@ fetch("https://nominatim.openstreetmap.org/search.php?q=동대문구&polygon_geo
     }
   }, [showMap, setStartLocation]);
 
+  useEffect(()=>{
+    setAddress("");
+  },[]);
+
   return (
     <div style={styles.page}>
       {/* 헤더 */}
