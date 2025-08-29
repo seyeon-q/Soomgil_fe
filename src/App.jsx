@@ -10,6 +10,16 @@ import CustomLoadingPage from "./pages/CustomLoadingPage";
 import CustomResultPage from "./pages/CustomResultPage";
 import RecommendationPage1 from "./pages/RecommendationPage1.jsx";
 import RecommendationPage2 from "./pages/RecommendationPage2.jsx";
+import L from "leaflet";
+
+// 마커 아이콘 수동 설정
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconUrl: "/leaflet/marker-icon.png",
+  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
+  shadowUrl: "/leaflet/marker-shadow.png",
+});
 
 
 
