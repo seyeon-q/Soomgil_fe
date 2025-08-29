@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { FaChevronRight, FaChevronDown } from "react-icons/fa";
+import { getRouteHistory } from "../utils/routeHistory.js";
+import { getPersonalizedMessages } from "../services/api.js";
 
 
 export default function SetupPage() {
@@ -16,12 +18,80 @@ export default function SetupPage() {
   const [showDurationInput, setShowDurationInput] = useState(false);
   const [showMoodInput, setShowMoodInput] = useState(false);
   const [mood, setMood] = useState("");
+  const [personalizedMessages, setPersonalizedMessages] = useState([
+    "🌼 동대문구의 숨은 산책로를 찾아보아요!"
+  ]);
 
 
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const mapDivRef = useRef(null);
   const boundaryLayerRef = useRef(null); // 동대문구 경계 레이어 저장
+
+  // 시간대별 선호도 분석 함수
+  const getDurationPreference = () => {
+    const userHistory = getRouteHistory();
+    if (!userHistory || userHistory.length === 0) {
+      return 'medium'; // 기본값
+    }
+
+    // 최근 5개 기록의 평균 산책 시간 계산
+    const recentHistory = userHistory.slice(0, 5);
+    const totalDuration = recentHistory.reduce((sum, record) => {
+      return sum + (record.durationMin || 30); // 기본값 30분
+    }, 0);
+    const avgDuration = totalDuration / recentHistory.length;
+
+    // 선호도 분류
+    if (avgDuration <= 30) {
+      return 'short';
+    } else if (avgDuration <= 90) {
+      return 'medium';
+    } else {
+      return 'long';
+    }
+  };
+
+  // 개인화된 메시지 가져오기
+  const fetchPersonalizedMessages = async () => {
+    try {
+      const userHistory = getRouteHistory();
+      console.log("🔍 사용자 산책 기록:", userHistory);
+      console.log("🔍 기록 개수:", userHistory ? userHistory.length : 0);
+      
+      // routeHistory가 없으면 기본 메시지만 표시
+      if (!userHistory || userHistory.length === 0) {
+        console.log("⚠️ 기록이 없어서 기본 메시지 표시");
+        setPersonalizedMessages(["🌼 동대문구의 숨은 산책로를 찾아보아요!"]);
+        return;
+      }
+      
+      console.log("🚀 API 호출 시작...");
+      const result = await getPersonalizedMessages(userHistory);
+      console.log("✅ 개인화 API 응답:", result);
+      
+      if (result.success && result.messages) {
+        console.log("🎉 개인화 메시지 설정:", result.messages);
+        setPersonalizedMessages(result.messages);
+        
+        // 가장 최근 방문한 장소의 좌표가 있으면 시작 위치로 설정
+        if (result.latest_coordinates) {
+          console.log("📍 최근 방문 위치로 시작점 설정:", result.latest_coordinates);
+          setStartLocation(result.latest_coordinates);
+          
+          // 주소도 함께 업데이트
+          await fetchAddress(result.latest_coordinates.lat, result.latest_coordinates.lng);
+        }
+      } else {
+        console.log("❌ API 응답 실패 또는 메시지 없음");
+        setPersonalizedMessages(["🌼 동대문구의 숨은 산책로를 찾아보아요!"]);
+      }
+    } catch (error) {
+      console.error("💥 개인화 메시지 가져오기 실패:", error);
+      // 에러 발생 시에도 기본 메시지 표시
+      setPersonalizedMessages(["🌼 동대문구의 숨은 산책로를 찾아보아요!"]);
+    }
+  };
 
 
   // 좌표 → 주소 변환
@@ -106,6 +176,11 @@ export default function SetupPage() {
       console.error("지오코딩 실패:", e);
     }
   };
+
+  // 페이지 로드 시 개인화된 메시지 가져오기
+  useEffect(() => {
+    fetchPersonalizedMessages();
+  }, []);
 
   // 지도 초기화
   useEffect(() => {
@@ -230,6 +305,82 @@ fetch("https://nominatim.openstreetmap.org/search.php?q=동대문구&polygon_geo
 
       {/* 버튼들 */}
       <div style={styles.buttons}>
+
+        {/* 추가: 안내 문구 3줄 */}
+        <div
+  style={{
+    marginTop: 0,
+    marginBottom: 24,   // 아래 버튼과의 간격
+    textAlign: "center",
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    fontFamily: "MyCustomFont",
+  }}
+>
+  {personalizedMessages.map((message, index) => {
+    // 첫 번째 메시지(장소 기반)와 두 번째 메시지(시간대 기반) 클릭 가능하게 만들기
+    const isFirstMessageClickable = index === 0 && message.includes("오늘은") && message.includes("에서 새로운 산책을 시작해보세요");
+    const isSecondMessageClickable = index === 1 && (message.includes("긴 코스") || message.includes("짧은 코스") || message.includes("새로운"));
+    
+    const isClickable = isFirstMessageClickable || isSecondMessageClickable;
+    
+    // 추천된 장소 추출 (첫 번째 메시지용)
+    const extractRecommendedPlace = (msg) => {
+      const match = msg.match(/오늘은 (.+?)에서 새로운 산책을 시작해보세요/);
+      return match ? match[1] : null;
+    };
+    
+    // 시간대별 추천 장소 (두 번째 메시지용)
+    const getDurationBasedPlace = () => {
+      // 사용자 취향에 따른 추천 장소
+      if (message.includes("긴 코스")) {
+        return "한강공원"; // 긴 코스 추천
+      } else if (message.includes("짧은 코스")) {
+        return "어린이놀이터"; // 짧은 코스 추천
+      } else {
+        return "중랑천"; // 변주 코스 추천
+      }
+    };
+    
+    const recommendedPlace = isFirstMessageClickable ? extractRecommendedPlace(message) : getDurationBasedPlace();
+    
+    return (
+      <p
+        key={index}
+        style={{
+          fontSize: 23,
+          margin: index === personalizedMessages.length - 1 ? 0 : "0 0 4px 0",
+          textShadow: "0.2px 0 #000000ff, -0.2px 0 #000000ff, 0 0.2px #000000ff, 0 -0.2px #000000ff",
+          cursor: isClickable ? "pointer" : "default",
+          textDecoration: isClickable ? "underline" : "none",
+          textDecorationThickness: isClickable ? "0.5px" : "auto",
+          color: isClickable ? "#3a893e" : "inherit",
+        }}
+        onClick={() => {
+          if (isClickable && recommendedPlace) {
+            // 첫 번째 메시지는 RecommendationPage1, 두 번째 메시지는 RecommendationPage2로 이동
+            const targetPage = isFirstMessageClickable ? "/recommendation1" : "/recommendation2";
+            
+            nav(targetPage, {
+              state: {
+                recommendedPlace,
+                userPreference: getDurationPreference(), // 시간대별 선호도 분석
+                currentLocation: startLocation || { lat: 37.5839, lng: 127.0559 }
+              }
+            });
+          }
+        }}
+      >
+        {message}
+      </p>
+    );
+  })}
+</div>
+
+        {/* 추가 끝 */}
+
        {/* 시작 위치 선택 */}
 <button style={styles.btn} onClick={() => setShowMap((prev) => !prev)}>
   {showMap ? <FaChevronDown size={14} style={{ marginRight: 6 }} /> 
@@ -403,7 +554,7 @@ const styles = {
     display:"flex",
     flexDirection:"column",
     alignItems:"center",
-    marginBottom: 20,
+    marginBottom: 20, // 숨길이랑 소개 텍스트 사이 간격
   },
   subtitle: {
     fontSize: 30,

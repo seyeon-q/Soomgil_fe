@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { getRouteHistory, clearRouteHistory } from "../utils/routeHistory.js";
 
 export default function MyPage() {
   const nav = useNavigate();
@@ -6,7 +8,19 @@ export default function MyPage() {
   const nickname = "디디미";
   const profileImg = "/account.png"; // public 폴더에 넣고 "/파일명"으로 불러오기
   const badge = "🥇 초보 산책러";
-  const totalWalkTime = 380; // 분 단위
+
+const [routes, setRoutes] = useState([]);
+const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    setRoutes(getRouteHistory());   // ✅ sessionStorage에서 불러오기
+  }, []);
+
+  // 총 산책 시간(분 단위 합산)
+  const totalWalkTime = useMemo(
+    () => routes.reduce((acc, r) => acc + (r.durationMin ?? 0), 0),
+    [routes]
+  );
 
   // 분 → "시간 분" 변환
   const formatTime = (minutes) => {
@@ -17,50 +31,18 @@ export default function MyPage() {
     return `${m}분`;
   };
 
-  // 산책 기록 5개 (날짜 내림차순 정렬)
-  const routes = [
-    {
-      date: "2025-08-29",
-      startLocation: "서울 동대문구 회기로 85",
-      duration: 60,
-      description: "한적한 대학교 주변 코스로 산책",
-    },
-    {
-      date: "2025-08-27",
-      startLocation: "서울 동대문구 전농로 90",
-      duration: 45,
-      description: "서울시립대 앞 산책로와 정원 탐방",
-    },
-    {
-      date: "2025-08-25",
-      startLocation: "서울 동대문구 왕산로 214",
-      duration: 30,
-      description: "동대문역 인근 청계천 따라 가볍게 걷기",
-    },
-    {
-      date: "2025-08-22",
-      startLocation: "서울 동대문구 청계천로 421",
-      duration: 50,
-      description: "청계천 보행로 따라 여유롭게 산책",
-    },
-    {
-      date: "2025-08-20",
-      startLocation: "서울 동대문구 답십리로 210",
-      duration: 80,
-      description: "답십리공원과 이어지는 산책 코스",
-    },
-  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+  // 전체 경로 삭제 함수
+  const handleClearAllRoutes = () => {
+    if (window.confirm("모든 산책 기록을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) {
+      clearRouteHistory();
+      setRoutes([]); // 상태 업데이트
+      alert("모든 산책 기록이 삭제되었습니다.");
+    }
+  };
 
   // 1시간 = 1스탬프
   const stamps = Math.floor(totalWalkTime / 60);
-
-  // 스탬프 이미지들 (public 폴더에 넣기)
-  const stampImgs = [
-    "/stamps/stamp1.png",
-    "/stamps/stamp2.png"
-  ];
-
-  // 총 10칸
+  const stampImgs = ["/stamps/stamp1.png", "/stamps/stamp2.png"];
   const totalSlots = 10;
   const stampArray = Array.from({ length: totalSlots }).map((_, i) => {
     if (i < stamps) {
@@ -119,7 +101,24 @@ export default function MyPage() {
 
       {/* 산책 기록 */}
       <div style={{ marginTop: 40 }}>
-        <h3 style={styles.subtitle}>🌳 나의 산책 기록</h3>
+        <div style={styles.recordHeaderSection}>
+          <h3 style={styles.subtitle}>🌳 나의 산책 기록</h3>
+          {routes.length > 0 && (
+            <button 
+              onClick={handleClearAllRoutes}
+              style={{
+                ...styles.clearAllButton,
+                background: isHovered ? "#ff5252" : "#ff6b6b"
+              }}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              🗑️ 전체 삭제
+            </button>
+          )}
+        </div>
+        
+
 
         {/* 제목 줄 */}
         <div style={styles.recordHeader}>
@@ -128,26 +127,42 @@ export default function MyPage() {
           <span>소요시간</span>
           <span>경로 설명</span>
         </div>
+<div style={styles.recordList}>
+  {routes.length === 0 && (
+    <div style={{ padding: 20, textAlign: "center", fontSize: 18, color: "#666" }}>
+      저장된 경로가 없습니다.<br />
+      산책 경로를 생성하고 저장해보세요!
+    </div>
+  )}
 
-        {/* 실제 기록 */}
-        <div style={styles.recordList}>
-          {routes.map((r, idx) => {
+  {routes.map((r, idx) => {
     // "서울 동대문구 " 기준으로 분리
-    const [prefix, rest] = r.startLocation.split("동대문구 ");
+    let displayAddr1 = r.startAddress;
+    let displayAddr2 = "";
+    if (r.startAddress?.includes("동대문구 ")) {
+      const [prefix, rest] = r.startAddress.split("동대문구 ");
+      displayAddr1 = `${prefix}동대문구`;
+      displayAddr2 = rest;
+    }
+
     return (
       <div key={idx} style={styles.recordCard}>
         <span>{r.date}</span>
         <span>
-          {prefix}동대문구
-          <br />
-          {rest}
+          {displayAddr1}
+          {displayAddr2 && (
+            <>
+              <br />
+              {displayAddr2}
+            </>
+          )}
         </span>
-        <span>{formatTime(r.duration)}</span>
-        <span>{r.description}</span>
+        <span>{formatTime(r.durationMin)}</span>
+        <span>{r.summary}</span>
       </div>
     );
   })}
-        </div>
+</div>
       </div>
     </div>
   );
@@ -215,11 +230,12 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "repeat(5, 28px)", // 5칸씩 자동 줄바꿈
     gap: 4,
+    marginLeft: -27,
     background: "#f9f9f9",
     padding: 8,
     borderRadius: 12,
     border: "1px solid #ddd",
-    transform: "scale(1.2)",
+    transform: "scale(1.1)",
     marginTop: 15,
   },
   stampCell: {
@@ -238,6 +254,24 @@ const styles = {
     background: "#fff",
   },
   subtitle: { fontSize: 35, marginTop: 0, marginBottom: 0, fontFamily: "MyCustomFont",textShadow: "0.5px 0 black, -0.5px 0 black, 0 0.5px black, 0 -0.5px black", },
+  recordHeaderSection: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  clearAllButton: {
+    background: "#ff6b6b",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    padding: "8px 16px",
+    fontSize: "16px",
+    cursor: "pointer",
+    fontFamily: "MyCustomFont",
+    fontWeight: "bold",
+    transition: "background-color 0.2s",
+  },
   recordHeader: {
     fontSize: 25,
     display: "grid",
