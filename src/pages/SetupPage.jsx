@@ -254,15 +254,10 @@ fetch("https://nominatim.openstreetmap.org/search.php?q=동대문구&polygon_geo
       <div style={styles.header}>
         <div></div>
         <div>
-          {isLoggedIn ? (
-            <button style={styles.headerBtn} onClick={() => nav("/mypage")}>
-              내 정보
-            </button>
-          ) : (
-            <button style={styles.headerBtn} onClick={() => nav("/login")}>
-              Google 로그인
-            </button>
-          )}
+          <button style={styles.headerBtn} onClick={() => nav("/mypage")}>
+  내 정보
+</button>
+
         </div>
       </div>
 
