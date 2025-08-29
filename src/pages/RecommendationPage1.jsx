@@ -23,7 +23,7 @@ export default function RecommendationPage1() {
   const generateRouteToRecommendedPlace = async () => {
     try {
       // final_edges.geojson에서 목적지와 일치하는 가장 가까운 엣지 찾기
-      const edgeResponse = await fetch('http://localhost:5001/api/find-destination-edge', {
+      const edgeResponse = await fetch('//52.23.215.30:5001/api/find-destination-edge', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
